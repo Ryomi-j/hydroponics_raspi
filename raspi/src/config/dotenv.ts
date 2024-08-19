@@ -1,5 +1,7 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
-export default function dotenvConfig() {
+const dotenvConfig = () => {
   dotenv.config();
-}
+};
+
+export default dotenvConfig;

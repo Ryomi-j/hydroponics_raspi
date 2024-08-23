@@ -14,4 +14,8 @@ void initializeSensors();
 SensorData readSensors();
 void displayDataOnLCD(float temp, float humidity);
 
+float getCurrentTemperature();
+float getCurrentPh();
+float getCurrentConductivity();
+
 #endif

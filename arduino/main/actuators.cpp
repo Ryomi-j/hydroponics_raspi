@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include "actuators.h"
 #include "sensors.h"
-#include <map>
 
 // 핀 정의
 #define FAN_PIN 6
@@ -10,22 +9,15 @@
 #define CONDUCTIVITY_DOSING_PUMP_PIN 9
 #define LED_STRIP_PIN 10
 
-bool isFanConnected = true;
-bool isWaterPumpConnected = true;
-bool isPhPumpConnected = true;
-bool isConductivityPumpConnected = true;
-bool isLedStripConnected = true;
-
 // 사용자 설정값
 bool pumpActivated = true;
 bool pumpOn = false;
-unsigned long pumpOnDuration = 10000;  // 펌프 동작 시간 (밀리초)
-unsigned long pumpOffDuration = 300000;  // 펌프 멈춤 시간 (밀리초)
+unsigned long pumpOnDuration = 300000;  // 펌프 동작 시간 (밀리초)
+unsigned long pumpOffDuration = 10000;  // 펌프 멈춤 시간 (밀리초)
 unsigned long pumpStartTime = 0;
 unsigned long pumpEndTime = 86400000;  // 기본적으로 하루종일 활성화 (밀리초)
 
 bool fanActivated = true;
-// 연결 상태 플래그
 float fanThresholdTemperature = 25.0;
 
 float phMin = 5.5;
@@ -42,9 +34,6 @@ unsigned long ledEndTime = 86400000;  // 기본적으로 하루종일 활성화 
 unsigned long previousMillis = 0;
 bool isPumpOn = false;
 
-// 함수 포인터 타입 정의
-typedef void (*SettingHandler)(String);
-
 // 설정값 처리 함수들
 void handlePumpOn(String value) { pumpOnDuration = value.toInt() * 1000; }
 void handlePumpOff(String value) { pumpOffDuration = value.toInt() * 1000; }
@@ -56,8 +45,8 @@ void handleLedOn(String value) { isLedOn = value.toInt() == 1; }
 void handleLedStart(String value) { ledStartTime = value.toInt() * 1000; }
 void handleLedEnd(String value) { ledEndTime = value.toInt() * 1000; }
 
-// 설정값 처리 함수들을 저장하는 맵
-std::map<String, SettingHandler> settingHandlers = {
+// 설정값 처리 함수들을 배열로 저장
+Setting settings[] = {
     {"PUMP_ON", handlePumpOn},
     {"PUMP_OFF", handlePumpOff},
     {"PUMP_ACTIVATION", handlePumpActivation},
@@ -69,60 +58,46 @@ std::map<String, SettingHandler> settingHandlers = {
     {"LED_END", handleLedEnd}
 };
 
+const int SETTINGS_COUNT = sizeof(settings) / sizeof(settings[0]);  // 배열의 크기를 계산
+
 void initializeActuators() {
-    // 핀 모드 설정
     pinMode(FAN_PIN, OUTPUT);
     pinMode(WATER_PUMP_PIN, OUTPUT);
     pinMode(PH_DOSING_PUMP_PIN, OUTPUT);
     pinMode(CONDUCTIVITY_DOSING_PUMP_PIN, OUTPUT);
     pinMode(LED_STRIP_PIN, OUTPUT);
 
-    // 초기 상태 설정
     digitalWrite(FAN_PIN, LOW);
     digitalWrite(WATER_PUMP_PIN, LOW);
     digitalWrite(PH_DOSING_PUMP_PIN, LOW);
     digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, LOW);
     digitalWrite(LED_STRIP_PIN, LOW);
-
-    // 예외 처리: 장치 연결 여부 확인
-    if (!isFanConnected) Serial.println("경고: 환풍기가 연결되지 않았습니다.");
-    if (!isWaterPumpConnected) Serial.println("경고: Water Pump가 연결되지 않았습니다.");
-    if (!isPhPumpConnected) Serial.println("경고: pH 도징 펌프가 연결되지 않았습니다.");
-    if (!isConductivityPumpConnected) Serial.println("경고: Conductivity 도징 펌프가 연결되지 않았습니다.");
-    if (!isLedStripConnected) Serial.println("경고: LED 스트립이 연결되지 않았습니다.");
 }
 
 void applySettings() {
-    // 환풍기 제어
-    float currentTemperature = getCurrentTemperature();  // 온도 센서 값 읽기
-    if (fanActivated && currentTemperature >= fanThresholdTemperature && isFanConnected) {
-        digitalWrite(FAN_PIN, HIGH);  // 환풍기 켜기
+    float currentTemperature = getCurrentTemperature();
+    if (fanActivated && currentTemperature >= fanThresholdTemperature) {
+        digitalWrite(FAN_PIN, HIGH);
     } else {
-        digitalWrite(FAN_PIN, LOW);  // 환풍기 끄기
+        digitalWrite(FAN_PIN, LOW);
     }
 
-    // pH 및 전도도 제어
-    float currentPh = getCurrentPh();  // pH 센서 값 읽기
-    if (isPhPumpConnected) {
-        if (currentPh < phMin) {
-            digitalWrite(PH_DOSING_PUMP_PIN, HIGH);  // pH를 올리기 위한 도징 펌프 작동
-        } else if (currentPh > phMax) {
-            digitalWrite(PH_DOSING_PUMP_PIN, LOW);  // pH를 낮추기 위한 도징 펌프 작동
-        }
+    float currentPh = getCurrentPh();
+    if (currentPh < phMin) {
+        digitalWrite(PH_DOSING_PUMP_PIN, HIGH);
+    } else if (currentPh > phMax) {
+        digitalWrite(PH_DOSING_PUMP_PIN, LOW);
     }
 
-    float currentConductivity = getCurrentConductivity();  // 전도도 센서 값 읽기
-    if (isConductivityPumpConnected) {
-        if (currentConductivity < conductivityMin) {
-            digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, HIGH);  // 전도도 올리기 위한 도징 펌프 작동
-        } else if (currentConductivity > conductivityMax) {
-            digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, LOW);  // 전도도 낮추기 위한 도징 펌프 작동
-        }
+    float currentConductivity = getCurrentConductivity();
+    if (currentConductivity < conductivityMin) {
+        digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, HIGH);
+    } else if (currentConductivity > conductivityMax) {
+        digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, LOW);
     }
 
-    // LED 제어 (스케줄에 따라)
     unsigned long currentMillis = millis();
-    if (ledActivated && isLedStripConnected && currentMillis >= ledStartTime && currentMillis <= ledEndTime) {
+    if (ledActivated && currentMillis >= ledStartTime && currentMillis <= ledEndTime) {
         digitalWrite(LED_STRIP_PIN, HIGH);
     } else {
         digitalWrite(LED_STRIP_PIN, LOW);
@@ -132,27 +107,21 @@ void applySettings() {
 void controlWaterPump() {
     unsigned long currentMillis = millis();
 
-    if (isWaterPumpConnected && pumpActivated) {
-        // 펌프가 설정된 시간대에만 동작하도록 제어
+    if (pumpActivated) {
         if (currentMillis >= pumpStartTime && currentMillis <= pumpEndTime) {
             if (isPumpOn && (currentMillis - previousMillis >= pumpOnDuration)) {
-                // 펌프를 OFF로 전환
                 digitalWrite(WATER_PUMP_PIN, LOW);
                 isPumpOn = false;
                 previousMillis = currentMillis;
             } else if (!isPumpOn && (currentMillis - previousMillis >= pumpOffDuration)) {
-                // 펌프를 ON으로 전환
                 digitalWrite(WATER_PUMP_PIN, HIGH);
                 isPumpOn = true;
                 previousMillis = currentMillis;
             }
         } else {
-            // 펌프가 시간대 외에 있을 때는 항상 OFF
             digitalWrite(WATER_PUMP_PIN, LOW);
             isPumpOn = false;
         }
-    } else {
-        Serial.println("워터 펌프가 연결되지 않거나 비활성화 상태입니다.");
     }
 }
 
@@ -161,10 +130,7 @@ void receiveSettings() {
     if (Serial.available()) {
         String data = Serial.readStringUntil('\n');
         if (data.startsWith("SET:")) {
-            // 데이터를 파싱하여 설정값을 추출
-            data.replace("SET:", "");  // "SET:" 제거
-
-            // 설정값을 콤마로 구분하여 배열로 변환
+            data.replace("SET:", "");
             int paramCount = 0;
             String params[10];
             while (data.length() > 0 && paramCount < 10) {
@@ -178,16 +144,17 @@ void receiveSettings() {
                 }
             }
 
-            // 파라미터 파싱 및 적용
             for (int i = 0; i < paramCount; i++) {
                 int delimiterIndex = params[i].indexOf(':');
                 if (delimiterIndex > 0) {
                     String key = params[i].substring(0, delimiterIndex);
                     String value = params[i].substring(delimiterIndex + 1);
 
-                    // 해당 키가 맵에 있으면 처리
-                    if (settingHandlers.find(key) != settingHandlers.end()) {
-                        settingHandlers[key](value);  // 설정값 적용
+                    for (int j = 0; j < sizeof(settings) / sizeof(settings[0]); j++) {
+                        if (key == settings[j].key) {
+                            settings[j].handler(value);
+                            break;
+                        }
                     }
                 }
             }

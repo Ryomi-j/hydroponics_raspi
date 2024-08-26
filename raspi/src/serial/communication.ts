@@ -4,7 +4,7 @@ import { saveSensorData } from "../firebase/firestore";
 import { validateSensorData } from "../sensors/validation";
 
 // 시리얼 포트 초기화
-const port = new SerialPort({ path: "/dev/ttyUSB0", baudRate: 9600 });
+const port = new SerialPort({ path: "/dev/ttyACM0", baudRate: 9600 });
 const parser = port.pipe(new ReadlineParser({ delimiter: "\n" })); // 줄 단위로 데이터 파싱
 
 // 시리얼 포트에서 수신한 데이터 처리
@@ -61,19 +61,25 @@ export const sendSettingsToArduino = (settings: {
   temperature: number;
   ph: number;
   conductivity: number;
-  nutrientTemperature: number;
+  ledStart: number;
+  ledEnd: number;
   pumpOnDuration: number;
   pumpOffDuration: number;
+  pumpActivated: boolean;
 }) => {
   const {
     temperature,
     ph,
     conductivity,
-    nutrientTemperature,
+    ledStart,
+    ledEnd,
     pumpOnDuration,
     pumpOffDuration,
+    pumpActivated,
   } = settings;
-  const command = `SET:TEMP:${temperature},PH:${ph},COND:${conductivity},NUT_TEMP:${nutrientTemperature},PUMP_ON:${pumpOnDuration},PUMP_OFF:${pumpOffDuration}\n`;
+  const command = `SET:TEMP:${temperature},PH:${ph},COND:${conductivity},LED_START:${ledStart},LED_END:${ledEnd},PUMP_ON:${pumpOnDuration},PUMP_OFF:${pumpOffDuration},PUMP_ACT:${
+    pumpActivated ? 1 : 0
+  }\n`;
 
   // 시리얼 포트를 통해 아두이노로 전송
   port.write(command, (err) => {

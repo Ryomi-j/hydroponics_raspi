@@ -1,5 +1,5 @@
 {
-  "name": "functions",
+  "name": "nature_blend_rasp",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
     "build": "tsc",

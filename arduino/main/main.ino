@@ -23,5 +23,7 @@ void loop() {
     // 워터 펌프 제어
     controlWaterPump();
 
-    delay(1000); // 1초마다 업데이트
+    displayDataOnLCD(data.outerTemp, data.outerHumidity);
+
+    delay(5000);  // 5초마다 업데이트
 }

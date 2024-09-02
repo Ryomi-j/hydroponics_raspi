@@ -4,7 +4,7 @@
 
 void sendDataToRaspberryPi(SensorData data) {
     Serial.print("WATER_LEVEL:");
-    Serial.print(data.waterLevel);
+    Serial.print(data.waterLevel ? "1" : "0");  // 1 (HIGH), 0 (LOW)로 변환하여 전송
     Serial.print(",PH:");
     Serial.print(data.phValue);
     Serial.print(",OUTER_TEMP:");
@@ -17,9 +17,11 @@ void sendDataToRaspberryPi(SensorData data) {
     Serial.println(data.conductivity);
 }
 
+// Client 설정값 통신
 bool receiveSettingsFromRaspberryPi() {
     if (Serial.available() > 0) {
         String data = Serial.readStringUntil('\n');
+        
         if (data.startsWith("SET:")) {
             data.replace("SET:", "");
 

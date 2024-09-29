@@ -1,35 +1,49 @@
+import fs from "fs";
 import { SerialPort } from "serialport";
 import { ReadlineParser } from "@serialport/parser-readline";
-import { saveSensorData } from "../firebase/firestore";
 import { validateSensorData } from "../sensors/validation";
 
-// 시리얼 포트 초기화
-const port = new SerialPort({ path: "/dev/ttyACM0", baudRate: 9600 });
-const parser = port.pipe(new ReadlineParser({ delimiter: "\n" })); // 줄 단위로 데이터 파싱
+const portPaths = ["/dev/ttyUSB0", "/dev/ttyUSB1", "/dev/ttyACM0"]; // 다중 포트 정의
 
-// 시리얼 포트에서 수신한 데이터 처리
-parser.on("data", (data: string) => {
-  processData(data);
+// 각 시리얼 포트에 대한 초기화
+portPaths.forEach((portPath) => {
+  const port = new SerialPort({ path: portPath, baudRate: 115200 });
+  const parser = port.pipe(new ReadlineParser({ delimiter: "\n" }));
+
+  parser.on("data", (data: string) => {
+    processData(data, portPath); // 각 포트에서 들어오는 데이터를 처리
+  });
+
+  port.on("open", () => {
+    console.log(`Port ${portPath} opened`);
+  });
+
+  port.on("error", (err) => {
+    console.error(`Error on port ${portPath}: `, err);
+  });
 });
 
-export const processData = (data: string) => {
-  console.log(`Received data: ${data}`);
+// 데이터를 처리하는 함수
+export const processData = (data: string, portPath: string) => {
+  console.log(`Received data from ${portPath}: ${data}`);
 
   // 센서 데이터 유효성 검사
   if (!validateSensorData(data)) {
-    console.log("유효하지 않은 데이터. 저장을 건너뜁니다.");
+    console.log("Invalid data, skipping save.");
     return;
   }
 
-  // 데이터 파싱
-  const sensorData = parseSensorData(data);
+  // 데이터 파싱 및 deviceId 추출
+  const { deviceId, sensorData } = parseSensorData(data);
 
-  // Firestore에 데이터 저장
-  saveSensorData(sensorData);
+  // 데이터 파일에 저장
+  saveSensorDataToFile(deviceId, sensorData);
 };
 
+// 데이터 파싱 및 deviceId 처리
 const parseSensorData = (data: string) => {
   const [
+    deviceId,
     waterLevel,
     phValue,
     outerTemp,
@@ -37,6 +51,7 @@ const parseSensorData = (data: string) => {
     nutrientTemp,
     conductivity,
   ] = data
+    .replace("DEVICE_ID:", "")
     .replace("WATER_LEVEL:", "")
     .replace("PH:", "")
     .replace("OUTER_TEMP:", "")
@@ -44,48 +59,77 @@ const parseSensorData = (data: string) => {
     .replace("NUTRIENT_TEMP:", "")
     .replace("CONDUCTIVITY:", "")
     .split(",")
-    .map(Number);
+    .map((value) => value.trim());
 
   return {
-    waterLevel,
-    phValue,
-    outerTemp,
-    outerHumidity,
-    nutrientTemp,
-    conductivity,
+    deviceId,
+    sensorData: {
+      waterLevel: Number(waterLevel),
+      phValue: Number(phValue),
+      outerTemp: Number(outerTemp),
+      outerHumidity: Number(outerHumidity),
+      nutrientTemp: Number(nutrientTemp),
+      conductivity: Number(conductivity),
+    },
   };
 };
 
+// deviceId별로 파일 저장
+const saveSensorDataToFile = (deviceId: string, sensorData: any) => {
+  const filePath = `/home/eunjeong/Desktop/hydroponics-rasp/data/${deviceId}.txt`;
+  const dataString = `${sensorData.waterLevel},${sensorData.phValue},${sensorData.outerTemp},${sensorData.outerHumidity},${sensorData.nutrientTemp},${sensorData.conductivity}\n`;
+
+  // 파일에 데이터 추가
+  fs.appendFileSync(filePath, dataString, "utf8");
+};
+
 // 설정값을 아두이노로 전송하는 함수
-export const sendSettingsToArduino = (settings: {
-  temperature: number;
-  ph: number;
-  conductivity: number;
-  ledStart: number;
-  ledEnd: number;
-  pumpOnDuration: number;
-  pumpOffDuration: number;
-  pumpActivated: boolean;
-}) => {
+export const sendSettingsToArduino = (
+  deviceId: string,
+  settings: {
+    temperature: number;
+    ph: number;
+    conductivity: number;
+    nutrientTemperature: number;
+    pumpOnDuration: number;
+    pumpOffDuration: number;
+  }
+) => {
   const {
     temperature,
     ph,
     conductivity,
-    ledStart,
-    ledEnd,
+    nutrientTemperature,
     pumpOnDuration,
     pumpOffDuration,
-    pumpActivated,
   } = settings;
-  const command = `SET:TEMP:${temperature},PH:${ph},COND:${conductivity},LED_START:${ledStart},LED_END:${ledEnd},PUMP_ON:${pumpOnDuration},PUMP_OFF:${pumpOffDuration},PUMP_ACT:${
-    pumpActivated ? 1 : 0
-  }\n`;
 
-  // 시리얼 포트를 통해 아두이노로 전송
+  const command = `SET:DEVICE_ID:${deviceId},TEMP:${temperature},PH:${ph},COND:${conductivity},NUT_TEMP:${nutrientTemperature},PUMP_ON:${pumpOnDuration},PUMP_OFF:${pumpOffDuration}\n`;
+
+  // 시리얼 포트에서 deviceId에 해당하는 포트 찾기
+  const port = findPortForDevice(deviceId); // deviceId에 맞는 포트 식별 함수 추가
+
+  if (!port) {
+    return console.log(`No port found for device: ${deviceId}`);
+  }
+
+  // 시리얼 포트를 통해 아두이노로 설정값 전송
   port.write(command, (err) => {
     if (err) {
-      return console.log("Error on write: ", err.message);
+      return console.log(`Error on write to device ${deviceId}: `, err.message);
     }
-    console.log("Settings sent to Arduino:", command);
+    console.log(`Settings sent to Arduino (${deviceId}):`, command);
   });
+};
+
+// deviceId에 맞는 시리얼 포트 식별 함수
+const findPortForDevice = (deviceId: string): SerialPort | undefined => {
+  // 미리 연결된 포트 정보와 deviceId 매핑을 통해 포트 식별
+  const devicePortMap: { [key: string]: SerialPort } = {
+    device1: new SerialPort({ path: "/dev/ttyUSB0", baudRate: 115200 }),
+    device2: new SerialPort({ path: "/dev/ttyUSB1", baudRate: 115200 }),
+    // 추가적인 포트 연결을 이곳에 정의
+  };
+
+  return devicePortMap[deviceId];
 };

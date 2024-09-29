@@ -19,3 +19,23 @@ const calculateAverages = (dataArray: any[]) => {
     conductivity: calculateWithoutMinMax(dataArray.map((d) => d.conductivity)),
   };
 };
+
+// 센서 데이터의 각 라인을 파싱하는 함수
+const parseSensorLine = (line: string) => {
+  const [
+    waterLevel,
+    phValue,
+    outerTemp,
+    outerHumidity,
+    nutrientTemp,
+    conductivity,
+  ] = line.split(",").map(Number);
+  return {
+    waterLevel,
+    phValue,
+    outerTemp,
+    outerHumidity,
+    nutrientTemp,
+    conductivity,
+  };
+};

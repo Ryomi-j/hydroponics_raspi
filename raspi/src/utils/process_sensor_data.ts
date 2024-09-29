@@ -1,3 +1,30 @@
+import fs from "fs";
+import { saveSensorDataToDatabase } from "../firebase/firestore";
+
+// 데이터 파일이 저장된 경로
+const dataDir = "/home/eunjeong/Desktop/hydroponics-rasp/data/";
+
+// 파일을 읽고 평균을 계산하여 DB에 저장하는 함수
+const processFiles = () => {
+  fs.readdirSync(dataDir).forEach((file) => {
+    const filePath = `${dataDir}/${file}`;
+    const sensorData = fs.readFileSync(filePath, "utf-8").trim().split("\n");
+
+    if (sensorData.length > 0) {
+      // 데이터 파싱 및 min/max 제외한 평균 계산
+      const parsedData = sensorData.map(parseSensorLine);
+      const averagedData = calculateAverages(parsedData);
+
+      // DB에 저장
+      const deviceId = file.replace(".txt", "");
+      saveSensorDataToDatabase(deviceId, averagedData);
+
+      // 파일 초기화
+      fs.writeFileSync(filePath, "");
+    }
+  });
+};
+
 // 각 센서값에서 min/max 제외하고 평균 계산
 const calculateAverages = (dataArray: any[]) => {
   const calculateWithoutMinMax = (values: number[]) => {
@@ -39,3 +66,6 @@ const parseSensorLine = (line: string) => {
     conductivity,
   };
 };
+
+// 5분마다 센서 파일들을 처리
+processFiles();

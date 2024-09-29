@@ -83,6 +83,7 @@ void initializeActuators() {
     digitalWrite(LED_STRIP_PIN, LOW);
 }
 
+// 설정값에 따른 조치
 void applySettings() {
     float currentTemperature = getCurrentTemperature();
     
@@ -154,6 +155,7 @@ void controlWaterPump() {
 void receiveSettings() {
     if (Serial.available()) {
         String data = Serial.readStringUntil('\n');
+        
         if (data.startsWith("SET:")) {
             data.replace("SET:", "");
             int paramCount = 0;

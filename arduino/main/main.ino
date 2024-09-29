@@ -26,7 +26,7 @@ void loop() {
             applySettings();
         }
 
-        // 워터 펌프 제어
-        controlWaterPump();
-    }
+    displayDataOnLCD(data.outerTemp, data.outerHumidity);
+
+    delay(5000);  // 5초마다 업데이트
 }

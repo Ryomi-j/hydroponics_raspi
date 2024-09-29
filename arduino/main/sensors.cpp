@@ -3,7 +3,7 @@
 #include <DHT.h>
 #include <LiquidCrystal_I2C.h>
 
-// DHT 설정
+// DHT 설정(아날로그 입력 핀을 디지털 핀으로 사용)
 #define DHTPIN A3
 #define DHTTYPE DHT11
 DHT dhtOuter(DHTPIN, DHTTYPE);
@@ -20,6 +20,7 @@ void initializeSensors() {
     dhtOuter.begin();
     lcd.init();
     lcd.backlight();
+    // pinMode: 디지털 핀의 입출력 설정
     pinMode(WATER_LEVEL_PIN, INPUT);
     pinMode(PH_SENSOR_PIN, INPUT);
     pinMode(CONDUCTIVITY_SENSOR_PIN, INPUT);
@@ -29,13 +30,23 @@ void initializeSensors() {
 SensorData readSensors() {
     SensorData data;
 
-    data.waterLevel = digitalRead(WATER_LEVEL_PIN) == HIGH ? 1.0 : 0.0; // 수위가 감지되면 1.0, 그렇지 않으면 0.0
+    // 값 보정 필요
+    data.waterLevel = digitalRead(WATER_LEVEL_PIN);
+    data.phValue = analogRead(PH_SENSOR_PIN) - 413;
+    data.conductivity = analogRead(CONDUCTIVITY_SENSOR_PIN) - 12.12;
 
-    data.phValue = analogRead(PH_SENSOR_PIN);
-    data.conductivity = analogRead(CONDUCTIVITY_SENSOR_PIN);
     data.outerTemp = dhtOuter.readTemperature();
     data.outerHumidity = dhtOuter.readHumidity();
-    data.nutrientTemp = analogRead(NUTRIENT_TEMP_PIN);
+    data.nutrientTemp = analogRead(NUTRIENT_TEMP_PIN) - 966.00;
+
+    if (isnan(data.outerTemp)) {
+        data.outerTemp = 0;
+        Serial.println("경고: 대기의 온도 센서가 값을 읽지 못했습니다.");
+    }
+    if (isnan(data.outerHumidity)) {
+        data.outerHumidity = 0;
+        Serial.println("경고: 대기의 습도 센서가 값을 읽지 못했습니다.");
+    }
 
     // 예외 처리: 연결되지 않은 센서의 값을 0으로 처리
     if (isnan(data.outerTemp)) {

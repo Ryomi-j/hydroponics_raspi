@@ -5,11 +5,13 @@
 // 핀 정의
 #define FAN_PIN 6
 #define WATER_PUMP_PIN 7
-#define PH_DOSING_PUMP_PIN 8
-#define CONDUCTIVITY_DOSING_PUMP_PIN 9
-#define LED_STRIP_PIN 10
+#define PH_LOW_DOSING_PUMP_PIN 8
+#define PH_HIGH_DOSING_PUMP_PIN 9
+#define CONDUCTIVITY_LOW_DOSING_PUMP_PIN 10
+#define CONDUCTIVITY_HIGH_DOSING_PUMP_PIN 11
+#define LED_STRIP_PIN 12
+#define WATER_LEVEL_PIN 2 
 
-// 사용자 설정값
 bool pumpActivated = true;
 bool pumpOn = false;
 unsigned long pumpOnDuration = 300000;  // 펌프 동작 시간 (밀리초)
@@ -20,6 +22,8 @@ unsigned long pumpEndTime = 86400000;  // 기본적으로 하루종일 활성화
 bool fanActivated = true;
 float fanThresholdTemperature = 25.0;
 
+float tempMin = 20.0;
+float tempMax = 30.0;
 float phMin = 5.5;
 float phMax = 7.5;
 float conductivityMin = 1.0;
@@ -58,25 +62,31 @@ Setting settings[] = {
     {"LED_END", handleLedEnd}
 };
 
-const int SETTINGS_COUNT = sizeof(settings) / sizeof(settings[0]);  // 배열의 크기를 계산
+const int SETTINGS_COUNT = sizeof(settings) / sizeof(settings[0]);
 
 void initializeActuators() {
     pinMode(FAN_PIN, OUTPUT);
     pinMode(WATER_PUMP_PIN, OUTPUT);
-    pinMode(PH_DOSING_PUMP_PIN, OUTPUT);
-    pinMode(CONDUCTIVITY_DOSING_PUMP_PIN, OUTPUT);
+    pinMode(PH_LOW_DOSING_PUMP_PIN, OUTPUT);
+    pinMode(PH_HIGH_DOSING_PUMP_PIN, OUTPUT);
+    pinMode(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, OUTPUT);
+    pinMode(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, OUTPUT);
     pinMode(LED_STRIP_PIN, OUTPUT);
+    pinMode(WATER_LEVEL_PIN, INPUT);  // 수위 센서 핀 입력 모드 설정
 
     digitalWrite(FAN_PIN, LOW);
     digitalWrite(WATER_PUMP_PIN, LOW);
-    digitalWrite(PH_DOSING_PUMP_PIN, LOW);
-    digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, LOW);
+    digitalWrite(PH_LOW_DOSING_PUMP_PIN, LOW);
+    digitalWrite(PH_HIGH_DOSING_PUMP_PIN, LOW);
+    digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, LOW);
+    digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, LOW);
     digitalWrite(LED_STRIP_PIN, LOW);
 }
 
 // 설정값에 따른 조치
 void applySettings() {
     float currentTemperature = getCurrentTemperature();
+    
     if (fanActivated && currentTemperature >= fanThresholdTemperature) {
         digitalWrite(FAN_PIN, HIGH);
     } else {
@@ -85,16 +95,22 @@ void applySettings() {
 
     float currentPh = getCurrentPh();
     if (currentPh < phMin) {
-        digitalWrite(PH_DOSING_PUMP_PIN, HIGH);
+        digitalWrite(PH_LOW_DOSING_PUMP_PIN, HIGH);
     } else if (currentPh > phMax) {
-        digitalWrite(PH_DOSING_PUMP_PIN, LOW);
+        digitalWrite(PH_HIGH_DOSING_PUMP_PIN, HIGH);
+    } else {
+        digitalWrite(PH_LOW_DOSING_PUMP_PIN, LOW);
+        digitalWrite(PH_HIGH_DOSING_PUMP_PIN, LOW);
     }
 
     float currentConductivity = getCurrentConductivity();
     if (currentConductivity < conductivityMin) {
-        digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, HIGH);
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, HIGH);
     } else if (currentConductivity > conductivityMax) {
-        digitalWrite(CONDUCTIVITY_DOSING_PUMP_PIN, LOW);
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, HIGH);
+    } else {
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, LOW);
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, LOW);
     }
 
     unsigned long currentMillis = millis();
@@ -102,6 +118,15 @@ void applySettings() {
         digitalWrite(LED_STRIP_PIN, HIGH);
     } else {
         digitalWrite(LED_STRIP_PIN, LOW);
+    }
+
+    // 수위 센서 상태에 따른 도징 펌프 제어
+    if (digitalRead(WATER_LEVEL_PIN) == LOW) {  // 수위가 낮을 때
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, HIGH);  // 물 공급
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, HIGH);  // 양액 공급
+    } else {  // 수위가 충분할 때
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, LOW);
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, LOW);
     }
 }
 
@@ -135,6 +160,7 @@ void receiveSettings() {
             data.replace("SET:", "");
             int paramCount = 0;
             String params[10];
+
             while (data.length() > 0 && paramCount < 10) {
                 int index = data.indexOf(',');
                 if (index == -1) {
@@ -152,7 +178,7 @@ void receiveSettings() {
                     String key = params[i].substring(0, delimiterIndex);
                     String value = params[i].substring(delimiterIndex + 1);
 
-                    for (int j = 0; j < sizeof(settings) / sizeof(settings[0]); j++) {
+                    for (int j = 0; j < SETTINGS_COUNT; j++) {
                         if (key == settings[j].key) {
                             settings[j].handler(value);
                             break;

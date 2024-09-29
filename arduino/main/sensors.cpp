@@ -34,6 +34,7 @@ SensorData readSensors() {
     data.waterLevel = digitalRead(WATER_LEVEL_PIN);
     data.phValue = analogRead(PH_SENSOR_PIN) - 413;
     data.conductivity = analogRead(CONDUCTIVITY_SENSOR_PIN) - 12.12;
+
     data.outerTemp = dhtOuter.readTemperature();
     data.outerHumidity = dhtOuter.readHumidity();
     data.nutrientTemp = analogRead(NUTRIENT_TEMP_PIN) - 966.00;
@@ -46,6 +47,35 @@ SensorData readSensors() {
         data.outerHumidity = 0;
         Serial.println("경고: 대기의 습도 센서가 값을 읽지 못했습니다.");
     }
+
+    // 예외 처리: 연결되지 않은 센서의 값을 0으로 처리
+    if (isnan(data.outerTemp)) {
+        data.outerTemp = 0;
+        Serial.println("경고: 대기의 온도 센서가 연결되지 않았습니다.");
+    }
+
+    if (isnan(data.outerHumidity)) {
+        data.outerHumidity = 0;
+        Serial.println("경고: 대기의 습도 센서가 연결되지 않았습니다.");
+    }
+
+    if (isnan(data.phValue)) {
+        data.phValue = 0;
+        Serial.println("경고: pH 센서가 연결되지 않았습니다.");
+    }
+
+    if (isnan(data.conductivity)) {
+        data.conductivity = 0;
+        Serial.println("경고: Conductivity 센서가 연결되지 않았습니다.");
+    }
+
+    if (isnan(data.nutrientTemp)) {
+        data.nutrientTemp = 0;
+        Serial.println("경고: 양액 온도 센서가 연결되지 않았습니다.");
+    }
+
+    // LCD에 대기의 온도 및 습도 표시
+    displayDataOnLCD(data.outerTemp, data.outerHumidity);
 
     return data;
 }

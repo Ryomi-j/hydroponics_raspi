@@ -3,7 +3,7 @@
 #include "communication.h"
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     initializeSensors();
     initializeActuators();
 }
@@ -26,7 +26,8 @@ void loop() {
             applySettings();
         }
 
-    displayDataOnLCD(data.outerTemp, data.outerHumidity);
-
-    delay(5000);  // 5초마다 업데이트
+        displayDataOnLCD(data.outerTemp, data.outerHumidity);
+    }
+    
+    delay(1000 * 5 );  // 5초마다 업데이트
 }

@@ -1,19 +1,34 @@
-import express from 'express';
-import { saveSettings } from '../firebase/firestore';
-import { sendSettingsToArduino } from '../serial/communication';
+import express from "express";
+import { sendSettingsToArduino } from "../serial/communication";
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
-  const { temperature, ph, conductivity, ledStart, ledEnd, pumpOnDuration, pumpOffDuration, pumpActivated } = req.body;
+router.post("/", (req, res) => {
+  const {
+    deviceId,
+    temperature,
+    ph,
+    conductivity,
+    nutrientTemperature,
+    pumpOnDuration,
+    pumpOffDuration,
+  } = req.body;
 
-  // Firestore에 설정값 저장
-  await saveSettings({ temperature, ph, conductivity, ledStart, ledEnd, pumpOnDuration, pumpOffDuration, pumpActivated });
+  if (!deviceId) {
+    return res.status(400).send("Device ID is required");
+  }
 
-  // 아두이노로 설정값 전송
-  sendSettingsToArduino({ temperature, ph, conductivity, ledStart, ledEnd, pumpOnDuration, pumpOffDuration, pumpActivated });
+  // deviceId와 함께 설정값 전송
+  sendSettingsToArduino(deviceId, {
+    temperature,
+    ph,
+    conductivity,
+    nutrientTemperature,
+    pumpOnDuration,
+    pumpOffDuration,
+  });
 
-  res.send('Settings updated');
+  return res.send("Settings updated");
 });
 
 export default router;

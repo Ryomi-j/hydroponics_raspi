@@ -28,6 +28,6 @@ void loop() {
 
         displayDataOnLCD(data.outerTemp, data.outerHumidity);
     }
-    
-    delay(1000 * 5 );  // 5초마다 업데이트
+
+    delay(1000 * 5);  // 5초마다 업데이트
 }

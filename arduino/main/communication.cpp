@@ -2,8 +2,9 @@
 #include "communication.h"
 #include "actuators.h"
 
+// "DEVICE_ID:"의 문자열 길이를 상수로 정의
+constexpr int DEVICE_ID_PREFIX_LENGTH = sizeof("DEVICE_ID:") - 1;  // 문자열 길이 계산
 const char* deviceId = "3YJ4nOhl8WUwbmm7LPlG";
-const int DEVICE_ID_KEY_LENGTH = sizeof("DEVICE_ID:") - 1;
 
 void sendDataToRaspberryPi(SensorData data) {
     // deviceId 전송
@@ -36,7 +37,7 @@ bool receiveSettingsFromRaspberryPi() {
             // DEVICE_ID 추출
             int deviceIdIndex = data.indexOf("DEVICE_ID:");
             int deviceIdEndIndex = data.indexOf(',', deviceIdIndex);
-            String receivedDeviceId = data.substring(deviceIdIndex + DEVICE_ID_KEY_LENGTH, deviceIdEndIndex);
+            String receivedDeviceId = data.substring(deviceIdIndex + DEVICE_ID_PREFIX_LENGTH, deviceIdEndIndex);
 
             // DEVICE_ID와 미리 정의된 deviceId 비교
             if (receivedDeviceId != deviceId) {

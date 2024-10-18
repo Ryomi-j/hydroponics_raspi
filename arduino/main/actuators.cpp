@@ -10,18 +10,19 @@
 #define CONDUCTIVITY_LOW_DOSING_PUMP_PIN 10
 #define CONDUCTIVITY_HIGH_DOSING_PUMP_PIN 11
 #define LED_STRIP_PIN 12
-#define WATER_LEVEL_PIN 2 
+#define WATER_LEVEL_PIN 2
 
 bool pumpActivated = true;
 bool pumpOn = false;
-unsigned long pumpOnDuration = 300000;  // 펌프 동작 시간 (밀리초)
-unsigned long pumpOffDuration = 10000;  // 펌프 멈춤 시간 (밀리초)
+unsigned long pumpOnDuration = 15 * 60 * 1000;  // 펌프 동작 시간 (밀리초)
+unsigned long pumpOffDuration = 45 * 60 * 1000;  // 펌프 멈춤 시간 (밀리초)
 unsigned long pumpStartTime = 0;
 unsigned long pumpEndTime = 86400000;  // 기본적으로 하루종일 활성화 (밀리초)
 
 bool fanActivated = true;
 float fanThresholdTemperature = 25.0;
 
+// 사용자 설정값
 float tempMin = 20.0;
 float tempMax = 30.0;
 float phMin = 5.5;
@@ -72,7 +73,7 @@ void initializeActuators() {
     pinMode(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, OUTPUT);
     pinMode(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, OUTPUT);
     pinMode(LED_STRIP_PIN, OUTPUT);
-    pinMode(WATER_LEVEL_PIN, INPUT);  // 수위 센서 핀 입력 모드 설정
+    pinMode(WATER_LEVEL_PIN, INPUT);
 
     digitalWrite(FAN_PIN, LOW);
     digitalWrite(WATER_PUMP_PIN, LOW);
@@ -83,40 +84,52 @@ void initializeActuators() {
     digitalWrite(LED_STRIP_PIN, LOW);
 }
 
+// 설정값에 따른 조치
 void applySettings() {
     float currentTemperature = getCurrentTemperature();
-    
-    if (fanActivated && currentTemperature >= fanThresholdTemperature) {
-        digitalWrite(FAN_PIN, HIGH);
+    float currentPh = getCurrentPh();
+    float currentConductivity = getCurrentConductivity();
+
+    // 환풍기 제어
+    if (currentTemperature < tempMin || currentTemperature > tempMax) {
+        digitalWrite(FAN_PIN, HIGH);  // 온도가 범위 밖이면 환풍기 작동
     } else {
         digitalWrite(FAN_PIN, LOW);
     }
 
-    float currentPh = getCurrentPh();
+    // pH 도징 펌프 제어
     if (currentPh < phMin) {
-        digitalWrite(PH_LOW_DOSING_PUMP_PIN, HIGH);
+        digitalWrite(PH_LOW_DOSING_PUMP_PIN, HIGH);  // pH를 올리기 위한 펌프 작동
+        digitalWrite(PH_HIGH_DOSING_PUMP_PIN, LOW);
     } else if (currentPh > phMax) {
-        digitalWrite(PH_HIGH_DOSING_PUMP_PIN, HIGH);
+        digitalWrite(PH_HIGH_DOSING_PUMP_PIN, HIGH);  // pH를 낮추기 위한 펌프 작동
+        digitalWrite(PH_LOW_DOSING_PUMP_PIN, LOW);
     } else {
         digitalWrite(PH_LOW_DOSING_PUMP_PIN, LOW);
         digitalWrite(PH_HIGH_DOSING_PUMP_PIN, LOW);
     }
 
-    float currentConductivity = getCurrentConductivity();
+    // 전도도 도징 펌프 제어
     if (currentConductivity < conductivityMin) {
-        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, HIGH);
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, HIGH);  // 전도도를 올리기 위한 펌프 작동
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, LOW);
     } else if (currentConductivity > conductivityMax) {
-        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, HIGH);
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, HIGH);  // 전도도를 낮추기 위한 펌프 작동
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, LOW);
     } else {
         digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, LOW);
         digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, LOW);
     }
 
-    unsigned long currentMillis = millis();
-    if (ledActivated && currentMillis >= ledStartTime && currentMillis <= ledEndTime) {
-        digitalWrite(LED_STRIP_PIN, HIGH);
+    // 수위 센서에 따른 제어
+    if (digitalRead(WATER_LEVEL_PIN) == LOW) {
+        // 수위가 낮으면 두 개의 도징 펌프 작동
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, HIGH);  // 물 펌프
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, HIGH); // 고장액 펌프
     } else {
-        digitalWrite(LED_STRIP_PIN, LOW);
+        // 수위가 높으면 두 펌프를 멈춤
+        digitalWrite(CONDUCTIVITY_LOW_DOSING_PUMP_PIN, LOW);
+        digitalWrite(CONDUCTIVITY_HIGH_DOSING_PUMP_PIN, LOW);
     }
 
     // 수위 센서 상태에 따른 도징 펌프 제어
@@ -154,6 +167,7 @@ void controlWaterPump() {
 void receiveSettings() {
     if (Serial.available()) {
         String data = Serial.readStringUntil('\n');
+        
         if (data.startsWith("SET:")) {
             data.replace("SET:", "");
             int paramCount = 0;

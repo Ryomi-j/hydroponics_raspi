@@ -46,7 +46,13 @@ REST API를 통해 다음 설정값을 제어할 수 있습니다:
 npm install
 ```
 
-2. 환경 변수 설정:
+2. TypeScript 컴파일:
+
+```bash
+npm run build
+```
+
+3. 환경 변수 설정:
    `.env` 파일을 생성하고 다음 값들을 설정하세요:
 
 ```
@@ -55,10 +61,10 @@ FIREBASE_PRIVATE_KEY=your_private_key
 FIREBASE_CLIENT_EMAIL=your_client_email
 ```
 
-3. Crontab 설정:
+4. Crontab 설정:
 
 ```bash
-*/5 * * * * /usr/bin/node /path/to/process_sensor_data.ts
+*/5 * * * * /usr/local/bin/ts-node /path/to/hydroponics-rasp/src/utils/process_sensor_data.ts
 ```
 
 ## API 사용법
@@ -119,7 +125,7 @@ nano /path/to/folder/start_script.sh
 #!/bin/bash
 cd /path/to/folder/hydroponics-rasp
 npm run build  # TypeScript를 JavaScript로 컴파일
-node /path/to/folder/hydroponics-rasp/lib/index.js  # 변환된 JavaScript 파일 실행
+npm start      # 컴파일된 JavaScript 파일 실행
 ```
 
 3. 실행 권한 부여:
@@ -169,6 +175,7 @@ sudo usermod -a -G dialout $USER
 ```bash
 mkdir -p /path/to/folder/hydroponics-rasp/data/
 ```
+
 3. Firebase 인증 정보가 올바르게 설정되어 있는지 확인하세요.
 4. 스크립트 경로가 올바른지 확인하세요
 5. TypeScript 컴파일 설정(`tsconfig.json`)이 올바른지 확인하세요
@@ -179,6 +186,8 @@ mkdir -p /path/to/folder/hydroponics-rasp/data/
 - 시리얼 통신 오류 발생 시 포트 연결 상태와 권한을 확인하세요
 - 데이터가 저장되지 않을 경우 Firebase 인증 정보를 확인하세요
 - 센서 데이터 형식이 올바른지 확인하세요
+- TypeScript 컴파일 오류 발생 시 `npm run build` 로그를 확인하세요
+- 실행 시 모듈을 찾을 수 없다는 오류가 발생하면 `npm install`을 다시 실행하세요
 
 ## 라이선스
 
@@ -189,20 +198,20 @@ MIT License
 
 Copyright (c) 2024 Kim Eunjeong
 
-이 소프트웨어의 복제본과 관련된 문서화 파일("소프트웨어")을 획득하는 사람은 
-누구라도 소프트웨어를 별다른 제한 없이 무상으로 사용할 수 있는 권한을 
-부여받습니다. 여기에는 소프트웨어의 복제본을 무제한으로 사용, 복제, 수정, 
-병합, 공표, 배포, 서브라이선스 설정 및 판매할 수 있는 권리와 이상의 행위를 
-소프트웨어를 제공받은 다른 수취인들에게 허용할 수 있는 권리가 포함되며, 
+이 소프트웨어의 복제본과 관련된 문서화 파일("소프트웨어")을 획득하는 사람은
+누구라도 소프트웨어를 별다른 제한 없이 무상으로 사용할 수 있는 권한을
+부여받습니다. 여기에는 소프트웨어의 복제본을 무제한으로 사용, 복제, 수정,
+병합, 공표, 배포, 서브라이선스 설정 및 판매할 수 있는 권리와 이상의 행위를
+소프트웨어를 제공받은 다른 수취인들에게 허용할 수 있는 권리가 포함되며,
 다음과 같은 조건을 충족시키는 것을 전제로 합니다.
 
-위와 같은 저작권 안내 문구와 본 허용 문구가 소프트웨어의 모든 복제본 및 
+위와 같은 저작권 안내 문구와 본 허용 문구가 소프트웨어의 모든 복제본 및
 중요 부분에 포함되어야 합니다.
 
-이 소프트웨어는 상품성, 특정 목적 적합성, 그리고 비침해에 대한 보증을 
-포함한 어떠한 형태의 보증도 명시적이나 묵시적으로 설정되지 않은 "있는 
-그대로의" 상태로 제공됩니다. 소프트웨어를 개발한 프로그래머나 저작권자는 
-어떠한 경우에도 소프트웨어나 소프트웨어의 사용 등의 행위와 관련하여 
-일어나는 어떤 요구사항이나 손해 및 기타 책임에 대해 계약상, 불법행위 또는 
+이 소프트웨어는 상품성, 특정 목적 적합성, 그리고 비침해에 대한 보증을
+포함한 어떠한 형태의 보증도 명시적이나 묵시적으로 설정되지 않은 "있는
+그대로의" 상태로 제공됩니다. 소프트웨어를 개발한 프로그래머나 저작권자는
+어떠한 경우에도 소프트웨어나 소프트웨어의 사용 등의 행위와 관련하여
+일어나는 어떤 요구사항이나 손해 및 기타 책임에 대해 계약상, 불법행위 또는
 기타 이유로 인한 책임을 지지 않습니다.
 ```

@@ -3,30 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "tsc",
+    "start": "node lib/index.js",
+    "dev": "ts-node src/index.ts",
+    "lint": "eslint src/**/*.ts",
+    "process-data": "ts-node src/utils/process_sensor_data.ts"
   },
   "engines": {
     "node": "18"
   },
   "main": "lib/index.js",
   "dependencies": {
+    "@serialport/parser-readline": "^12.0.0",
     "body-parser": "^1.20.2",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "firebase-admin": "^12.3.1",
-    "serialport": "^12.0.0",
-    "ts-node": "^10.9.2"
+    "serialport": "^12.0.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@typescript-eslint/eslint-plugin": "^5.12.0",
     "@typescript-eslint/parser": "^5.12.0",
     "eslint": "^8.9.0",
-    "eslint-config-google": "^0.14.0",
-    "eslint-plugin-import": "^2.25.4",
-    "firebase-functions-test": "^3.1.0",
+    "ts-node": "^10.9.1",
     "typescript": "^4.9.5"
   }
 }

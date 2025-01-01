@@ -1,9 +1,9 @@
 import express from "express";
-import { sendSettingsToArduino } from "../serial/communication";
+import { sendSettingsToArduino } from "../serial/process";
 
 const router = express.Router();
 
-router.post("/", (req, res) => {
+router.post("/", (req: any, res: any) => {
   const {
     deviceId,
     temperature,

@@ -1,8 +1,8 @@
 import fs from "fs";
 import { saveSensorDataToDatabase } from "../firebase/firestore";
 
-// 데이터 파일이 저장된 경로
-const dataDir = "/home/eunjeong/Desktop/hydroponics-rasp/data/";
+// FIXME: 데이터 파일이 저장된 경로를 설정합니다.
+const dataDir = "/path/to/hydroponics-rasp/data/";
 
 // 파일을 읽고 평균을 계산하여 DB에 저장하는 함수
 const processFiles = () => {

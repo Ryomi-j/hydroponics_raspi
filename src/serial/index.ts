@@ -1,6 +1,6 @@
 import { SerialPort } from "serialport";
 import { ReadlineParser } from "@serialport/parser-readline";
-import { processData } from "./communication";
+import { processData } from "./process";
 
 // 시리얼 포트 초기화 함수
 export const initializeSerialCommunication = () => {
